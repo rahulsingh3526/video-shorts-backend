@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: videoshorts-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 600 --workers 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.19
+      - key: PORT
+        value: 8000
+    autoDeploy: true
+    disk:
+      name: videoshorts-storage
+      mountPath: /opt/render/project/src
+      sizeGB: 1

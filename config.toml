@@ -1,0 +1,43 @@
+[settings]
+allow_nsfw = false
+theme = "dark"
+times_to_run = 1
+opacity = 0.9
+storymode = false
+storymodemethod = 1
+storymode_max_length = 1000
+resolution_w = 1080
+resolution_h = 1920
+zoom = 1.0
+channel_name = "Reddit Tales"
+
+[text_input]
+file_path = "input/story.txt"
+subtitle_font = "Arial"
+subtitle_size = 24
+subtitle_color = "white"
+subtitle_outline = 2
+
+[settings.background]
+background_video = "minecraft"
+background_audio = "lofi"
+background_audio_volume = 0.15
+enable_extra_audio = false
+background_thumbnail = false
+background_thumbnail_font_family = "arial"
+background_thumbnail_font_size = 96
+background_thumbnail_font_color = "255,255,255"
+
+[settings.tts]
+voice_choice = "elevenlabs"
+random_voice = true
+elevenlabs_voice_name = "Adam"
+elevenlabs_api_key = "sk_238dee8ffda43e0d9c92af4831c7a60539e4ca7af12a377f"
+aws_polly_voice = "Matthew"
+streamlabs_polly_voice = "Matthew"
+tiktok_voice = "en_us_001"
+tiktok_sessionid = ""
+python_voice = "1"
+py_voice_num = "2"
+silence_duration = 0.3
+no_emojis = false
