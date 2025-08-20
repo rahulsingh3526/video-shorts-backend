@@ -9,9 +9,7 @@ from werkzeug.utils import secure_filename
 import shutil
 
 app = Flask(__name__)
-CORS(app, origins=["https://video-shorts-frontend-one.vercel.app", "http://localhost:3000"], 
-     methods=["GET", "POST", "OPTIONS"], 
-     allow_headers=["Content-Type", "Authorization"])
+CORS(app)  # Allow all origins for now - simpler for development
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -45,8 +43,8 @@ def health_check():
     })
 
 @app.route('/api/upload-video', methods=['POST'])
-def upload_video():
-    """Simple video upload endpoint - just accepts and stores the file"""
+def upload_and_process_video():
+    """Upload video and automatically process it to shorts format"""
     try:
         # Check if file is in request
         if 'video' not in request.files:
@@ -64,26 +62,68 @@ def upload_video():
         file_id = str(uuid.uuid4())
         filename = secure_filename(file.filename)
         file_extension = filename.rsplit('.', 1)[1].lower()
-        upload_filename = f"{file_id}.{file_extension}"
-        upload_filepath = os.path.join(UPLOAD_FOLDER, upload_filename)
+        input_filename = f"{file_id}.{file_extension}"
+        input_filepath = os.path.join(UPLOAD_FOLDER, input_filename)
         
         # Save uploaded file
-        file.save(upload_filepath)
+        file.save(input_filepath)
         
-        # Get file info
-        file_size = os.path.getsize(upload_filepath)
+        # Get file info for logging
+        file_size = os.path.getsize(input_filepath)
+        print(f"Uploaded file: {input_filename}, Size: {file_size} bytes")
         
-        return jsonify({
-            'success': True,
-            'message': 'File uploaded successfully',
-            'file_id': file_id,
-            'filename': upload_filename,
-            'size': file_size,
-            'note': 'Processing endpoint will be available separately'
-        })
-        
+        try:
+            # Process the uploaded video to shorts
+            print(f"Starting video processing for: {input_filepath}")
+            
+            # Run auto_short_api.py script
+            result = subprocess.run([
+                'python3', 'auto_short_api.py', input_filepath
+            ], capture_output=True, text=True)  # No timeout - let processing take the time it needs
+            
+            if result.returncode != 0:
+                error_msg = result.stderr or result.stdout or 'Unknown error during processing'
+                print(f"Processing failed: {error_msg}")
+                return jsonify({'success': False, 'error': f'Processing failed: {error_msg}'}), 500
+            
+            print(f"Processing completed successfully")
+            
+            # Find the output file
+            results_dir = Path('results/creator_shorts')
+            if not results_dir.exists():
+                return jsonify({'success': False, 'error': 'Results directory not found'}), 500
+            
+            # Look for the most recent output file
+            output_files = list(results_dir.glob('*.mp4'))
+            if not output_files:
+                return jsonify({'success': False, 'error': 'No output file generated'}), 500
+            
+            # Get the most recent file
+            latest_file = max(output_files, key=os.path.getctime)
+            
+            # Move to results folder with unique name
+            output_filename = f"processed_video_{file_id}.mp4"
+            final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
+            shutil.move(str(latest_file), final_output_path)
+            
+            # Create download URL
+            download_url = f"/api/download/{output_filename}"
+            
+            return jsonify({
+                'success': True,
+                'message': 'Video processed to shorts successfully!',
+                'downloadUrl': download_url,
+                'originalSize': file_size,
+                'processedFile': output_filename
+            })
+            
+        finally:
+            # Cleanup uploaded file
+            cleanup_file(input_filepath)
+                
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Upload error: {str(e)}'}), 500
+        print(f"Server error: {str(e)}")
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/api/process-video', methods=['POST'])
 def process_video():
