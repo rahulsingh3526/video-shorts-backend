@@ -9,7 +9,9 @@ from werkzeug.utils import secure_filename
 import shutil
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend communication
+CORS(app, origins=["https://video-shorts-frontend-one.vercel.app", "http://localhost:3000"], 
+     methods=["GET", "POST", "OPTIONS"], 
+     allow_headers=["Content-Type", "Authorization"])
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -37,7 +39,9 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'message': 'VideoShorts API is running'
+        'message': 'VideoShorts API is running',
+        'version': '2.0-fixed',
+        'processing': 'High-quality 60-second clips in 1080p with CORS enabled'
     })
 
 @app.route('/api/process-video', methods=['POST'])
@@ -78,7 +82,7 @@ def process_video():
             # Run auto_short_api.py script
             result = subprocess.run([
                 'python3', 'auto_short_api.py', script_input_path
-            ], capture_output=True, text=True, timeout=600)  # 10 minute timeout
+            ], capture_output=True, text=True, timeout=600)  # 2 minute timeout
             
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout or 'Unknown error during processing'
@@ -149,7 +153,7 @@ def process_text():
             # Run auto_text_short_api.py script with text content directly
             result = subprocess.run([
                 'python3', 'auto_text_short_api.py', text_content
-            ], capture_output=True, text=True, timeout=900)  # 15 minute timeout for text processing
+            ], capture_output=True, text=True, timeout=600)  # 2 minute timeout for text processing
             
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout or 'Unknown error during processing'

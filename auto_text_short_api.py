@@ -74,8 +74,8 @@ def create_text_to_video(text_content: str) -> str:
             cmd = [
                 'ffmpeg',
                 '-f', 'lavfi',
-                '-i', 'color=c=black:s=1080x1920:d=60',  # Black background, vertical format, 60 seconds
-                '-vf', f"drawtext=textfile='{text_file_path}':fontfile=/System/Library/Fonts/Arial.ttf:fontsize=48:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:enable='between(t,0,60)'",
+                '-i', 'color=c=black:s=1080x1920:d=60',  # Black background, full HD vertical, 60 seconds
+                '-vf', f"drawtext=textfile='{text_file_path}':fontsize=48:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:enable='between(t,0,60)'",
                 '-c:v', 'libx264',
                 '-preset', 'fast',
                 '-crf', '23',
@@ -86,7 +86,7 @@ def create_text_to_video(text_content: str) -> str:
             
             print_substep(f"🛠️ Running: ffmpeg with text overlay")
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)  # 10 minutes max
             
             if result.returncode != 0:
                 # Try alternative approach without system fonts
@@ -103,7 +103,7 @@ def create_text_to_video(text_content: str) -> str:
                     '-y'
                 ]
                 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)  # 10 minutes max
                 
                 if result.returncode != 0:
                     error_msg = result.stderr or "FFmpeg text processing failed"

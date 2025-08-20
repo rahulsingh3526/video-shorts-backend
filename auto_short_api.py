@@ -70,7 +70,7 @@ def process_video_to_short(input_video_path: str) -> str:
         # This creates a basic short video by extracting a segment
         print_step("🎬 Creating short video...")
         
-        # Extract a 60-second segment starting from 10% into the video
+        # Extract a 60-second segment with high quality
         cmd = [
             'ffmpeg',
             '-i', str(input_path),
@@ -78,17 +78,17 @@ def process_video_to_short(input_video_path: str) -> str:
             '-t', '60',    # Duration of 60 seconds
             '-c:v', 'libx264',  # Video codec
             '-c:a', 'aac',      # Audio codec
-            '-preset', 'fast',   # Encoding speed
-            '-crf', '23',       # Quality
+            '-preset', 'fast',   # Good balance of speed and quality
+            '-crf', '23',       # High quality
             '-r', '30',         # 30 FPS
-            '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',  # Vertical format
+            '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',  # Full HD vertical
             str(output_path),
             '-y'  # Overwrite output file
         ]
         
         print_substep(f"🛠️ Running: {' '.join(cmd)}")
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)  # 10 minutes max
         
         if result.returncode != 0:
             error_msg = result.stderr or "FFmpeg processing failed"
