@@ -1,4 +1,5 @@
 import os
+import gc
 import uuid
 import subprocess
 import tempfile
@@ -88,6 +89,9 @@ def upload_and_process_video():
             
             print(f"Processing completed successfully")
             
+            # Force garbage collection after processing
+            gc.collect()
+            
             # Find the output file
             results_dir = Path('results/creator_shorts')
             if not results_dir.exists():
@@ -118,8 +122,9 @@ def upload_and_process_video():
             })
             
         finally:
-            # Cleanup uploaded file
+            # Aggressive cleanup for memory management
             cleanup_file(input_filepath)
+            gc.collect()  # Force garbage collection
                 
     except Exception as e:
         print(f"Server error: {str(e)}")

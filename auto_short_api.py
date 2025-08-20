@@ -11,6 +11,7 @@ Usage:
 
 import os
 import sys
+import gc
 import json
 import random
 import shutil
@@ -70,18 +71,20 @@ def process_video_to_short(input_video_path: str) -> str:
         # This creates a basic short video by extracting a segment
         print_step("🎬 Creating short video...")
         
-        # Extract a 60-second segment with high quality
+        # Extract a 30-second segment with memory-optimized settings for free tier
         cmd = [
             'ffmpeg',
             '-i', str(input_path),
-            '-ss', '30',   # Start at 30 seconds (fixed from invalid 10%)
-            '-t', '60',    # Duration of 60 seconds
+            '-ss', '30',   # Start at 30 seconds
+            '-t', '30',    # Duration of 30 seconds (shorter for memory)
             '-c:v', 'libx264',  # Video codec
             '-c:a', 'aac',      # Audio codec
-            '-preset', 'fast',   # Good balance of speed and quality
-            '-crf', '23',       # High quality
-            '-r', '30',         # 30 FPS
-            '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',  # Full HD vertical
+            '-preset', 'ultrafast',  # Fastest preset to reduce memory usage
+            '-crf', '28',       # Lower quality to reduce memory
+            '-r', '24',         # Lower FPS to reduce memory
+            '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280',  # Lower resolution for memory
+            '-threads', '1',    # Limit to 1 thread to control memory
+            '-bufsize', '64k',  # Small buffer size
             str(output_path),
             '-y'  # Overwrite output file
         ]
@@ -89,6 +92,9 @@ def process_video_to_short(input_video_path: str) -> str:
         print_substep(f"🛠️ Running: {' '.join(cmd)}")
         
         result = subprocess.run(cmd, capture_output=True, text=True)  # No timeout - let it take the time it needs
+        
+        # Force garbage collection after processing
+        gc.collect()
         
         if result.returncode != 0:
             error_msg = result.stderr or "FFmpeg processing failed"
