@@ -5,12 +5,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
-# Removed CORS for simplicity
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import shutil
 
 app = Flask(__name__)
-# No CORS - focusing on core functionality
+CORS(app)  # Enable CORS to fix blocking issue
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -56,6 +56,37 @@ def test_ffmpeg():
             'status': 'error',
             'message': f'FFmpeg test failed: {str(e)}'
         }), 500
+
+@app.route('/api/simple-upload', methods=['POST'])
+def simple_upload():
+    """Just upload the file without processing - for testing"""
+    try:
+        if 'video' not in request.files:
+            return jsonify({'success': False, 'error': 'No video file provided'}), 400
+        
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Just save the file and return success - no processing
+        file_id = str(uuid.uuid4())
+        filename = secure_filename(file.filename)
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        upload_filename = f"{file_id}.{file_extension}"
+        upload_filepath = os.path.join(UPLOAD_FOLDER, upload_filename)
+        
+        file.save(upload_filepath)
+        file_size = os.path.getsize(upload_filepath)
+        
+        return jsonify({
+            'success': True,
+            'message': 'File uploaded successfully (no processing)',
+            'size': file_size,
+            'filename': upload_filename
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Upload error: {str(e)}'}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
