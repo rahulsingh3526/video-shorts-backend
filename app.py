@@ -106,8 +106,8 @@ def upload_and_process_video():
             final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
             shutil.move(str(latest_file), final_output_path)
             
-            # Create download URL
-            download_url = f"/api/download/{output_filename}"
+            # Create download URL - return relative path
+            download_url = f"api/download/{output_filename}"
             
             return jsonify({
                 'success': True,
