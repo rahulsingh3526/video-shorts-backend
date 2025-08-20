@@ -82,7 +82,7 @@ def process_video():
             # Run auto_short_api.py script
             result = subprocess.run([
                 'python3', 'auto_short_api.py', script_input_path
-            ], capture_output=True, text=True, timeout=600)  # 2 minute timeout
+            ], capture_output=True, text=True)  # No timeout - let processing take the time it needs  # 2 minute timeout
             
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout or 'Unknown error during processing'
@@ -121,8 +121,6 @@ def process_video():
             if os.path.exists(temp_input_dir):
                 shutil.rmtree(temp_input_dir, ignore_errors=True)
                 
-    except subprocess.TimeoutExpired:
-        return jsonify({'success': False, 'error': 'Processing timeout. Video too long or complex.'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
@@ -153,7 +151,7 @@ def process_text():
             # Run auto_text_short_api.py script with text content directly
             result = subprocess.run([
                 'python3', 'auto_text_short_api.py', text_content
-            ], capture_output=True, text=True, timeout=600)  # 2 minute timeout for text processing
+            ], capture_output=True, text=True)  # No timeout - let processing take the time it needs  # 2 minute timeout for text processing
             
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout or 'Unknown error during processing'
@@ -191,8 +189,6 @@ def process_text():
             if os.path.exists(temp_text_dir):
                 shutil.rmtree(temp_text_dir, ignore_errors=True)
                 
-    except subprocess.TimeoutExpired:
-        return jsonify({'success': False, 'error': 'Processing timeout. Text too long or complex.'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 

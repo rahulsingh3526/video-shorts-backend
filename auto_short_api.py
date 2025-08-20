@@ -74,7 +74,7 @@ def process_video_to_short(input_video_path: str) -> str:
         cmd = [
             'ffmpeg',
             '-i', str(input_path),
-            '-ss', '10%',  # Start at 10% through the video
+            '-ss', '30',   # Start at 30 seconds (fixed from invalid 10%)
             '-t', '60',    # Duration of 60 seconds
             '-c:v', 'libx264',  # Video codec
             '-c:a', 'aac',      # Audio codec
@@ -88,7 +88,7 @@ def process_video_to_short(input_video_path: str) -> str:
         
         print_substep(f"🛠️ Running: {' '.join(cmd)}")
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)  # 10 minutes max
+        result = subprocess.run(cmd, capture_output=True, text=True)  # No timeout - let it take the time it needs
         
         if result.returncode != 0:
             error_msg = result.stderr or "FFmpeg processing failed"
@@ -103,8 +103,6 @@ def process_video_to_short(input_video_path: str) -> str:
         else:
             raise Exception("Video processing completed but output file not found")
             
-    except subprocess.TimeoutExpired:
-        raise Exception("Video processing timed out (5 minutes)")
     except Exception as e:
         print_step(f"❌ Error creating short video: {e}")
         raise

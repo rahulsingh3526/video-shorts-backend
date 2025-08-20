@@ -86,7 +86,7 @@ def create_text_to_video(text_content: str) -> str:
             
             print_substep(f"🛠️ Running: ffmpeg with text overlay")
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)  # 10 minutes max
+            result = subprocess.run(cmd, capture_output=True, text=True)  # No timeout - let it take the time it needs
             
             if result.returncode != 0:
                 # Try alternative approach without system fonts
@@ -103,7 +103,7 @@ def create_text_to_video(text_content: str) -> str:
                     '-y'
                 ]
                 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)  # 10 minutes max
+                result = subprocess.run(cmd, capture_output=True, text=True)  # No timeout - let it take the time it needs
                 
                 if result.returncode != 0:
                     error_msg = result.stderr or "FFmpeg text processing failed"
@@ -125,8 +125,6 @@ def create_text_to_video(text_content: str) -> str:
         else:
             raise Exception("Text video processing completed but output file not found")
             
-    except subprocess.TimeoutExpired:
-        raise Exception("Text video processing timed out (5 minutes)")
     except Exception as e:
         print_step(f"❌ Error creating text video: {e}")
         raise
