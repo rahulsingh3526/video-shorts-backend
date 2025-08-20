@@ -33,6 +33,30 @@ def cleanup_file(filepath):
     except Exception as e:
         print(f"Error cleaning up {filepath}: {e}")
 
+@app.route('/api/test-ffmpeg', methods=['GET'])
+def test_ffmpeg():
+    """Test if FFmpeg is available and working"""
+    try:
+        result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            version_line = result.stdout.split('\n')[0]
+            return jsonify({
+                'status': 'success',
+                'message': 'FFmpeg is working',
+                'version': version_line
+            })
+        else:
+            return jsonify({
+                'status': 'error', 
+                'message': 'FFmpeg failed',
+                'error': result.stderr
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'FFmpeg test failed: {str(e)}'
+        }), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -76,11 +100,13 @@ def upload_and_process_video():
         try:
             # Process the uploaded video to shorts
             print(f"Starting video processing for: {input_filepath}")
+            print(f"File exists: {os.path.exists(input_filepath)}")
+            print(f"File size: {file_size} bytes")
             
-            # Run auto_short_api.py script
+            # Run auto_short_api.py script with detailed logging
             result = subprocess.run([
                 'python3', 'auto_short_api.py', input_filepath
-            ], capture_output=True, text=True)  # No timeout - let processing take the time it needs
+            ], capture_output=True, text=True)
             
             if result.returncode != 0:
                 error_msg = result.stderr or result.stdout or 'Unknown error during processing'
