@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import shutil
+from utils.console import print_step, print_substep
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS to fix blocking issue
@@ -93,9 +94,13 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'message': 'Simple Video-to-Shorts Converter',
-        'version': '1.0-simplified',
-        'function': 'Upload landscape video → Convert to vertical shorts → Download'
+        'message': 'Advanced Video-to-Shorts Converter',
+        'version': '2.0-advanced',
+        'endpoints': {
+            '/api/upload-video': 'Simple landscape to vertical conversion',
+            '/api/create-split-screen': 'Advanced split-screen with Minecraft background + subtitles'
+        },
+        'features': 'Voice transcription, Minecraft gameplay, subtitles, split-screen layout'
     })
 
 @app.route('/api/upload-video', methods=['POST'])
@@ -351,6 +356,75 @@ def download_file(filename):
         
     except Exception as e:
         return jsonify({'error': f'Download error: {str(e)}'}), 500
+
+@app.route('/api/create-split-screen', methods=['POST'])
+def create_split_screen_video():
+    """Create advanced split-screen video with Minecraft background and subtitles"""
+    try:
+        # Check if file is in request
+        if 'video' not in request.files:
+            return jsonify({'success': False, 'error': 'No video file provided'}), 400
+        
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Validate file type
+        if not allowed_file(file.filename, ALLOWED_VIDEO_EXTENSIONS):
+            return jsonify({'success': False, 'error': 'Invalid file type. Supported: mp4, mov, avi, mkv, webm'}), 400
+        
+        # Generate unique filename
+        file_id = str(uuid.uuid4())
+        filename = secure_filename(file.filename)
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        input_filename = f"{file_id}.{file_extension}"
+        input_filepath = os.path.join(UPLOAD_FOLDER, input_filename)
+        
+        # Save uploaded file
+        file.save(input_filepath)
+        
+        # Get file info for logging
+        file_size = os.path.getsize(input_filepath)
+        print(f"Uploaded file: {input_filename}, Size: {file_size} bytes")
+        
+        try:
+            # Create advanced split-screen video using the new composer
+            print_step("Starting advanced split-screen video creation")
+            
+            from advanced_video_composer import create_advanced_short
+            
+            # Create the split-screen video
+            output_path = create_advanced_short(input_filepath)
+            
+            # Move to results folder with unique name
+            output_filename = f"split_screen_{file_id}.mp4"
+            final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
+            shutil.move(output_path, final_output_path)
+            
+            # Create download URL
+            download_url = f"api/download/{output_filename}"
+            
+            return jsonify({
+                'success': True,
+                'message': 'Split-screen video created successfully!',
+                'downloadUrl': download_url,
+                'originalSize': file_size,
+                'processedFile': output_filename,
+                'description': 'Advanced split-screen video with Minecraft gameplay and subtitles'
+            })
+            
+        except Exception as e:
+            print_step(f"Error during split-screen creation: {str(e)}")
+            return jsonify({'success': False, 'error': f'Split-screen creation failed: {str(e)}'}), 500
+            
+        finally:
+            # Clean up uploaded file
+            cleanup_file(input_filepath)
+            gc.collect()
+                
+    except Exception as e:
+        print(f"Server error: {str(e)}")
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/api/cleanup', methods=['POST'])
 def cleanup_old_files():
