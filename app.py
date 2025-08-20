@@ -5,12 +5,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+# Removed CORS for simplicity
 from werkzeug.utils import secure_filename
 import shutil
 
 app = Flask(__name__)
-CORS(app)  # Allow all origins for now - simpler for development
+# No CORS - focusing on core functionality
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -38,9 +38,9 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'message': 'VideoShorts API is running',
-        'version': '2.0-fixed',
-        'processing': 'High-quality 60-second clips in 1080p with CORS enabled'
+        'message': 'Simple Video-to-Shorts Converter',
+        'version': '1.0-simplified',
+        'function': 'Upload landscape video → Convert to vertical shorts → Download'
     })
 
 @app.route('/api/upload-video', methods=['POST'])

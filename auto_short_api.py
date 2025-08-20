@@ -71,22 +71,19 @@ def process_video_to_short(input_video_path: str) -> str:
         # This creates a basic short video by extracting a segment
         print_step("🎬 Creating short video...")
         
-        # Extract a 30-second segment with memory-optimized settings for free tier
+        # Simple landscape to vertical conversion - core functionality only
         cmd = [
             'ffmpeg',
             '-i', str(input_path),
-            '-ss', '30',   # Start at 30 seconds
-            '-t', '30',    # Duration of 30 seconds (shorter for memory)
-            '-c:v', 'libx264',  # Video codec
-            '-c:a', 'aac',      # Audio codec
-            '-preset', 'ultrafast',  # Fastest preset to reduce memory usage
-            '-crf', '28',       # Lower quality to reduce memory
-            '-r', '24',         # Lower FPS to reduce memory
-            '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280',  # Lower resolution for memory
-            '-threads', '1',    # Limit to 1 thread to control memory
-            '-bufsize', '64k',  # Small buffer size
+            '-ss', '10',   # Start at 10 seconds
+            '-t', '30',    # 30-second duration
+            '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280',  # Convert to vertical
+            '-c:v', 'libx264',
+            '-c:a', 'aac',
+            '-preset', 'ultrafast',  # Fast processing
+            '-threads', '1',    # Single thread for memory
             str(output_path),
-            '-y'  # Overwrite output file
+            '-y'
         ]
         
         print_substep(f"🛠️ Running: {' '.join(cmd)}")
