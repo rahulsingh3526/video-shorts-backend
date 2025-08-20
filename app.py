@@ -44,6 +44,47 @@ def health_check():
         'processing': 'High-quality 60-second clips in 1080p with CORS enabled'
     })
 
+@app.route('/api/upload-video', methods=['POST'])
+def upload_video():
+    """Simple video upload endpoint - just accepts and stores the file"""
+    try:
+        # Check if file is in request
+        if 'video' not in request.files:
+            return jsonify({'success': False, 'error': 'No video file provided'}), 400
+        
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Validate file type
+        if not allowed_file(file.filename, ALLOWED_VIDEO_EXTENSIONS):
+            return jsonify({'success': False, 'error': 'Invalid file type. Supported: mp4, mov, avi, mkv, webm'}), 400
+        
+        # Generate unique filename
+        file_id = str(uuid.uuid4())
+        filename = secure_filename(file.filename)
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        upload_filename = f"{file_id}.{file_extension}"
+        upload_filepath = os.path.join(UPLOAD_FOLDER, upload_filename)
+        
+        # Save uploaded file
+        file.save(upload_filepath)
+        
+        # Get file info
+        file_size = os.path.getsize(upload_filepath)
+        
+        return jsonify({
+            'success': True,
+            'message': 'File uploaded successfully',
+            'file_id': file_id,
+            'filename': upload_filename,
+            'size': file_size,
+            'note': 'Processing endpoint will be available separately'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Upload error: {str(e)}'}), 500
+
 @app.route('/api/process-video', methods=['POST'])
 def process_video():
     """Process video to shorts format using auto_short.py"""
