@@ -145,17 +145,10 @@ def process_text():
         temp_text_dir = os.path.join('assets', 'temp', f'text_{file_id}')
         os.makedirs(temp_text_dir, exist_ok=True)
         
-        text_filename = f"story_{file_id}.txt"
-        text_filepath = os.path.join(temp_text_dir, text_filename)
-        
-        # Write text to file
-        with open(text_filepath, 'w', encoding='utf-8') as f:
-            f.write(text_content)
-        
         try:
-            # Run auto_text_short_api.py script
+            # Run auto_text_short_api.py script with text content directly
             result = subprocess.run([
-                'python3', 'auto_text_short_api.py', text_filepath
+                'python3', 'auto_text_short_api.py', text_content
             ], capture_output=True, text=True, timeout=900)  # 15 minute timeout for text processing
             
             if result.returncode != 0:
@@ -163,7 +156,7 @@ def process_text():
                 return jsonify({'success': False, 'error': f'Processing failed: {error_msg}'}), 500
             
             # Find the output file
-            results_dir = Path('results/custom')
+            results_dir = Path('results/creator_shorts')
             if not results_dir.exists():
                 return jsonify({'success': False, 'error': 'Results directory not found'}), 500
             

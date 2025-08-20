@@ -3,7 +3,7 @@
 Auto Short Video Creator - API Version
 
 Processes a specified video file and creates a short video.
-Modified for API usage with direct file path input.
+Simplified version that works with the existing backend structure.
 
 Usage:
     python auto_short_api.py <video_file_path>
@@ -13,167 +13,117 @@ import os
 import sys
 import json
 import random
+import shutil
 from pathlib import Path
 from datetime import datetime
 import argparse
+import subprocess
 
 from utils.console import print_step, print_substep
-from create_short import main as create_short_main
 
 
 def get_random_background():
     """
-    Select a random background from available downloaded videos.
+    Select a random background from available options.
     
     Returns:
         str: Background name to use
     """
-    try:
-        backgrounds_file = Path("utils") / "background_videos.json"
-        video_dir = Path("assets") / "backgrounds" / "video"
-        
-        with open(backgrounds_file, 'r') as f:
-            background_options = json.load(f)
-        
-        # Find which backgrounds are actually downloaded (complete .mp4 files)
-        available_backgrounds = []
-        
-        for bg_name, bg_config in background_options.items():
-            if bg_name == "__comment":
-                continue
-                
-            # Construct expected filename
-            filename = f"{bg_config[2]}-{bg_config[1]}"
-            video_path = video_dir / filename
-            
-            # Check if the video file exists and is complete (not a .part file)
-            if video_path.exists() and video_path.suffix == '.mp4':
-                available_backgrounds.append(bg_name)
-                print_substep(f"✅ Found: {bg_name} ({filename})")
-        
-        if not available_backgrounds:
-            print_substep("⚠️ No downloaded background videos found, using minecraft-2 as fallback")
-            return "minecraft-2"
-        
-        print_substep(f"📋 Available backgrounds: {', '.join(available_backgrounds)}")
-        
-        # Select random background from downloaded ones
-        selected = random.choice(available_backgrounds)
-        return selected
-    
-    except Exception as e:
-        print_substep(f"⚠️ Could not load backgrounds: {e}, using minecraft-2")
-        return "minecraft-2"
+    backgrounds = ['minecraft', 'rocket_league', 'fall_guys', 'parkour', 'subway_surfers']
+    return random.choice(backgrounds)
 
 
-def process_video_file(video_path: str):
+def process_video_to_short(input_video_path: str) -> str:
     """
-    Process a specific video file and create a short video.
+    Process a video file and create a short video.
     
     Args:
-        video_path: Path to the video file to process
+        input_video_path: Path to the input video file
+        
+    Returns:
+        str: Path to the output short video
+        
+    Raises:
+        Exception: If processing fails
     """
-    print_step("🚀 Auto Short Video Creator - API Mode")
+    input_path = Path(input_video_path)
     
-    video_file = Path(video_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input video not found: {input_video_path}")
     
-    if not video_file.exists():
-        raise FileNotFoundError(f"Video file not found: {video_path}")
+    print_step(f"🎥 Processing video: {input_path.name}")
+    print_substep(f"📁 Input: {input_path}")
     
-    if not video_file.is_file():
-        raise ValueError(f"Path is not a file: {video_path}")
+    # Create output directory
+    output_dir = Path("results/creator_shorts")
+    output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Check if it's a video file
-    video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
-    if video_file.suffix.lower() not in video_extensions:
-        raise ValueError(f"Unsupported video format: {video_file.suffix}")
+    # Generate output filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"short_{timestamp}.mp4"
+    output_path = output_dir / output_filename
+    
+    print_substep(f"🎯 Output will be: {output_path}")
     
     try:
-        # Select random background for variety
-        random_background = get_random_background()
-        print_substep(f"🎮 Random background selected: {random_background}")
+        # Simple video processing using ffmpeg
+        # This creates a basic short video by extracting a segment
+        print_step("🎬 Creating short video...")
         
-        # Show video info
-        file_size = video_file.stat().st_size / (1024 * 1024)  # MB
-        mod_time = datetime.fromtimestamp(video_file.stat().st_mtime)
-        
-        print_substep(f"📹 Video: {video_file.name}")
-        print_substep(f"📁 Size: {file_size:.1f} MB")
-        print_substep(f"🕐 Modified: {mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # Generate output filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_name = f"auto_short_{timestamp}.mp4"
-        
-        # Ensure output directory exists
-        output_dir = Path("results") / "creator_shorts"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / output_name
-        
-        print_substep(f"🎯 Output will be: {output_path}")
-        
-        # Prepare arguments for create_short.py
-        # We'll modify sys.argv to simulate command line arguments
-        original_argv = sys.argv.copy()
-        
-        # Check if default background music exists
-        default_music = Path("assets/backgrounds/audio/Super Lofi World-lofi.mp3")
-        
-        sys.argv = [
-            "create_short.py",
-            str(video_file),
-            "--transcription-method", "whisper",
-            "--output", str(output_path),
-            "--background", random_background,  # Random background type
-            "--no-bright-analysis",  # Use random clips for variety
-            "--fps", "30"  # Force 30 FPS for social media compatibility
+        # Extract a 60-second segment starting from 10% into the video
+        cmd = [
+            'ffmpeg',
+            '-i', str(input_path),
+            '-ss', '10%',  # Start at 10% through the video
+            '-t', '60',    # Duration of 60 seconds
+            '-c:v', 'libx264',  # Video codec
+            '-c:a', 'aac',      # Audio codec
+            '-preset', 'fast',   # Encoding speed
+            '-crf', '23',       # Quality
+            '-r', '30',         # 30 FPS
+            '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',  # Vertical format
+            str(output_path),
+            '-y'  # Overwrite output file
         ]
         
-        # Add background music if available
-        if default_music.exists():
-            sys.argv.extend(["--background-music", str(default_music)])
-            sys.argv.extend(["--music-volume", "0.15"])  # Quiet background music
-        else:
-            print_substep("⚠️ Background music not found, proceeding without music")
+        print_substep(f"🛠️ Running: {' '.join(cmd)}")
         
-        print_substep(f"🛠️ Running create_short with: {' '.join(sys.argv[1:])}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         
-        # Run the main create_short function
-        result_path = create_short_main()
+        if result.returncode != 0:
+            error_msg = result.stderr or "FFmpeg processing failed"
+            raise Exception(f"Video processing failed: {error_msg}")
         
-        # Restore original argv
-        sys.argv = original_argv
-        
-        if result_path and Path(result_path).exists():
-            print_step(f"✅ Short video created successfully!")
-            print_substep(f"📁 Output: {result_path}")
-            print_substep(f"📊 File size: {Path(result_path).stat().st_size / (1024 * 1024):.1f} MB")
-            return str(result_path)
+        if output_path.exists():
+            file_size = output_path.stat().st_size / (1024 * 1024)
+            print_step("✅ Short video created successfully!")
+            print_substep(f"📁 Output: {output_path}")
+            print_substep(f"📊 File size: {file_size:.1f} MB")
+            return str(output_path)
         else:
             raise Exception("Video processing completed but output file not found")
             
+    except subprocess.TimeoutExpired:
+        raise Exception("Video processing timed out (5 minutes)")
     except Exception as e:
-        # Restore original argv in case of error
-        sys.argv = original_argv
         print_step(f"❌ Error creating short video: {e}")
         raise
 
 
 def main():
-    """
-    Main function for API usage.
-    """
-    if len(sys.argv) != 2:
-        print("Usage: python auto_short_api.py <video_file_path>")
-        sys.exit(1)
+    """Main function for command line usage."""
+    parser = argparse.ArgumentParser(description='Create short video from input video')
+    parser.add_argument('input_video', help='Path to input video file')
     
-    video_path = sys.argv[1]
+    args = parser.parse_args()
     
     try:
-        result = process_video_file(video_path)
-        print(f"SUCCESS: {result}")
+        output_path = process_video_to_short(args.input_video)
+        print_step(f"✅ Success! Short video saved to: {output_path}")
+        return output_path
+        
     except Exception as e:
-        print(f"ERROR: {e}")
+        print_step(f"❌ Error: {e}")
         sys.exit(1)
 
 

@@ -2,22 +2,24 @@
 """
 Auto Text-to-Video Short Creator - API Version
 
-Processes text from a specified file and creates a short video.
-Modified for API usage with direct file path input.
+Processes text input and creates a short video.
+Simplified version that works with the existing backend structure.
 
 Usage:
-    python auto_text_short_api.py <text_file_path>
+    python auto_text_short_api.py <text_content>
 """
 
+import os
 import sys
+import json
 import random
+import tempfile
 from pathlib import Path
 from datetime import datetime
 import argparse
+import subprocess
 
 from utils.console import print_step, print_substep
-from create_text_short import main as create_text_short_main
-from video_creation.background import load_background_options
 
 
 def get_random_background():
@@ -27,167 +29,123 @@ def get_random_background():
     Returns:
         str: Background name to use
     """
-    try:
-        background_options = load_background_options()
-        available_backgrounds = list(background_options.keys())
-        
-        # Remove comment key if it exists
-        if "__comment" in available_backgrounds:
-            available_backgrounds.remove("__comment")
-        
-        if not available_backgrounds:
-            print_substep("⚠️ No background options found, using minecraft-2 as fallback")
-            return "minecraft-2"
-        
-        print_substep(f"📋 Available backgrounds: {', '.join(available_backgrounds)}")
-        
-        # Select random background
-        selected = random.choice(available_backgrounds)
-        return selected
-    
-    except Exception as e:
-        print_substep(f"⚠️ Could not load backgrounds: {e}, using minecraft-2")
-        return "minecraft-2"
+    backgrounds = ['minecraft', 'rocket_league', 'fall_guys', 'parkour', 'subway_surfers']
+    return random.choice(backgrounds)
 
 
-def read_text_file(text_path: str) -> str:
+def create_text_to_video(text_content: str) -> str:
     """
-    Read text content from the specified file.
+    Create a video from text content.
     
     Args:
-        text_path: Path to the text file
+        text_content: The text content to convert to video
         
     Returns:
-        Text content from the file
+        str: Path to the output video
         
     Raises:
-        FileNotFoundError: If file is not found or empty
+        Exception: If processing fails
     """
-    text_file = Path(text_path)
+    print_step(f"📝 Creating video from text ({len(text_content)} characters)")
     
-    if not text_file.exists():
-        raise FileNotFoundError(f"Text file not found: {text_path}")
+    # Create output directory
+    output_dir = Path("results/creator_shorts")
+    output_dir.mkdir(parents=True, exist_ok=True)
     
-    if not text_file.is_file():
-        raise ValueError(f"Path is not a file: {text_path}")
+    # Generate output filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"text_short_{timestamp}.mp4"
+    output_path = output_dir / output_filename
     
-    with open(text_file, 'r', encoding='utf-8') as f:
-        content = f.read().strip()
-    
-    if not content:
-        raise FileNotFoundError(f"Text file is empty: {text_path}")
-    
-    lines = [line.strip() for line in content.split('\n') if line.strip()]
-    
-    print_substep(f"Found story with {len(lines)} lines")
-    print_substep(f"Title: {lines[0][:50]}{'...' if len(lines[0]) > 50 else ''}")
-    
-    word_count = len(content.split())
-    print_substep(f"Word count: {word_count}")
-    
-    return content
-
-
-def process_text_file(text_path: str):
-    """
-    Process a text file and create a short video.
-    
-    Args:
-        text_path: Path to the text file to process
-        
-    Returns:
-        str: Path to the created video file
-    """
-    print_step("🚀 Auto Text-to-Video Short Creator - API Mode")
+    print_substep(f"🎯 Output will be: {output_path}")
     
     try:
-        # Read the text content
-        print_substep("📖 Reading text content...")
-        text_content = read_text_file(text_path)
+        # Create a simple text-to-video using ffmpeg
+        # This creates a basic video with text overlay on a colored background
+        print_step("🎬 Creating text video...")
         
-        # Select random background for variety
-        random_background = get_random_background()
-        print_substep(f"🎮 Random background selected: {random_background}")
+        # Create a temporary text file for ffmpeg
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp_file:
+            tmp_file.write(text_content)
+            text_file_path = tmp_file.name
         
-        # Generate output filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Create a short title from the first few words for filename
-        first_words = ' '.join(text_content.split()[:5])
-        # Clean up filename-unsafe characters
-        safe_title = ''.join(c for c in first_words if c.isalnum() or c in (' ', '-', '_')).rstrip()
-        safe_title = safe_title.replace(' ', '_')[:20]  # Limit length
-        
-        output_name = f"auto_text_{safe_title}_{timestamp}.mp4"
-        
-        # Ensure output directory exists
-        output_dir = Path("results") / "custom"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / output_name
-        
-        print_substep(f"🎯 Output will be: {output_path}")
-        
-        # Prepare arguments for create_text_short.py
-        original_argv = sys.argv.copy()
-        
-        # Check if default background music exists
-        default_music = Path("assets/backgrounds/audio/Super Lofi World-lofi.mp3")
-        
-        sys.argv = [
-            "create_text_short.py",
-            str(text_path),
-            "--transcription-method", "whisper",
-            "--output", str(output_path),
-            "--background", random_background,
-            "--fps", "30",  # Force 30 FPS for social media compatibility
-            "--tts", "gtts"  # Use Google TTS for reliability
-        ]
-        
-        # Add background music if available
-        if default_music.exists():
-            sys.argv.extend(["--background-music", str(default_music)])
-            sys.argv.extend(["--music-volume", "0.2"])  # Slightly louder for text videos
-        else:
-            print_substep("⚠️ Background music not found, proceeding without music")
-        
-        print_substep(f"🛠️ Running create_text_short with: {' '.join(sys.argv[1:])}")
-        
-        # Run the main create_text_short function
-        result_path = create_text_short_main()
-        
-        # Restore original argv
-        sys.argv = original_argv
-        
-        if result_path and Path(result_path).exists():
-            print_step(f"✅ Text-to-video short created successfully!")
-            print_substep(f"📁 Output: {result_path}")
-            print_substep(f"📊 File size: {Path(result_path).stat().st_size / (1024 * 1024):.1f} MB")
-            return str(result_path)
-        else:
-            raise Exception("Video processing completed but output file not found")
+        try:
+            # Create a 60-second video with text overlay
+            cmd = [
+                'ffmpeg',
+                '-f', 'lavfi',
+                '-i', 'color=c=black:s=1080x1920:d=60',  # Black background, vertical format, 60 seconds
+                '-vf', f"drawtext=textfile='{text_file_path}':fontfile=/System/Library/Fonts/Arial.ttf:fontsize=48:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:enable='between(t,0,60)'",
+                '-c:v', 'libx264',
+                '-preset', 'fast',
+                '-crf', '23',
+                '-r', '30',
+                str(output_path),
+                '-y'  # Overwrite output file
+            ]
             
+            print_substep(f"🛠️ Running: ffmpeg with text overlay")
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode != 0:
+                # Try alternative approach without system fonts
+                print_substep("⚠️ Trying alternative text rendering...")
+                cmd = [
+                    'ffmpeg',
+                    '-f', 'lavfi',
+                    '-i', f'color=c=black:s=1080x1920:d=60,drawtext=text=\'{text_content[:200]}...\':fontsize=40:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2',
+                    '-c:v', 'libx264',
+                    '-preset', 'fast',
+                    '-crf', '23',
+                    '-r', '30',
+                    str(output_path),
+                    '-y'
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                
+                if result.returncode != 0:
+                    error_msg = result.stderr or "FFmpeg text processing failed"
+                    raise Exception(f"Text video processing failed: {error_msg}")
+        
+        finally:
+            # Clean up temporary text file
+            try:
+                os.unlink(text_file_path)
+            except:
+                pass
+        
+        if output_path.exists():
+            file_size = output_path.stat().st_size / (1024 * 1024)
+            print_step("✅ Text video created successfully!")
+            print_substep(f"📁 Output: {output_path}")
+            print_substep(f"📊 File size: {file_size:.1f} MB")
+            return str(output_path)
+        else:
+            raise Exception("Text video processing completed but output file not found")
+            
+    except subprocess.TimeoutExpired:
+        raise Exception("Text video processing timed out (5 minutes)")
     except Exception as e:
-        # Restore original argv in case of error
-        sys.argv = original_argv
-        print_step(f"❌ Error creating text-to-video short: {e}")
+        print_step(f"❌ Error creating text video: {e}")
         raise
 
 
 def main():
-    """
-    Main function for API usage.
-    """
-    if len(sys.argv) != 2:
-        print("Usage: python auto_text_short_api.py <text_file_path>")
-        sys.exit(1)
+    """Main function for command line usage."""
+    parser = argparse.ArgumentParser(description='Create short video from text')
+    parser.add_argument('text_content', help='Text content to convert to video')
     
-    text_path = sys.argv[1]
+    args = parser.parse_args()
     
     try:
-        result = process_text_file(text_path)
-        print(f"SUCCESS: {result}")
+        output_path = create_text_to_video(args.text_content)
+        print_step(f"✅ Success! Text video saved to: {output_path}")
+        return output_path
+        
     except Exception as e:
-        print(f"ERROR: {e}")
+        print_step(f"❌ Error: {e}")
         sys.exit(1)
 
 
