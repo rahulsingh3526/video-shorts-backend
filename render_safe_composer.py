@@ -66,25 +66,37 @@ class RenderSafeComposer:
     def _get_video_duration(self, video_path: str) -> float:
         """Get video duration using FFprobe."""
         try:
+            print(f"Getting duration for: {video_path}")
             cmd = ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration', '-of', 'csv=p=0', video_path]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=10)
-            return min(float(result.stdout.strip()), 120.0)  # Max 2 minutes
-        except:
+            duration = min(float(result.stdout.strip()), 120.0)  # Max 2 minutes
+            print(f"Video duration: {duration}s")
+            return duration
+        except Exception as e:
+            print(f"Duration detection failed: {e}, using fallback")
             return 30.0  # Safe fallback
     
     def _create_top_video(self, input_path: str, duration: float) -> str:
         """Create top half video."""
         top_video_path = self.temp_dir / f"top_{uuid.uuid4().hex[:6]}.mp4"
+        duration = min(duration, 60)  # Max 1 minute
         
+        print(f"Creating top video: {input_path} -> {top_video_path}")
         cmd = [
-            'ffmpeg', '-i', input_path, '-t', str(min(duration, 60)),  # Max 1 minute
-            '-vf', 'scale=720:640:force_original_aspect_ratio=decrease,pad=720:640:(ow-iw)/2:(oh-ih)/2',
+            'ffmpeg', '-i', input_path, '-t', str(duration),
+            '-vf', 'scale=720:640:force_original_aspect_ratio=decrease,pad=720:640:(ow-iw)/2:(oh-ih)/2:black',
             '-c:v', 'libx264', '-preset', 'superfast', '-crf', '28',
             '-r', '20', '-an', '-y', str(top_video_path)
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True, timeout=60)
-        return str(top_video_path)
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, timeout=60)
+            print(f"✅ Top video created: {top_video_path}")
+            return str(top_video_path)
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Top video creation failed: {e}")
+            print(f"FFmpeg stderr: {e.stderr.decode() if e.stderr else 'No stderr'}")
+            raise
     
     def _create_bottom_video(self, duration: float) -> str:
         """Create bottom half with simple background."""
