@@ -117,6 +117,35 @@ def test_minimal():
             'message': f'Minimal test failed: {str(e)}'
         }), 500
 
+@app.route('/api/test-render-safe', methods=['GET'])
+def test_render_safe():
+    """Test render-safe composer import and basic functionality"""
+    try:
+        # Test if we can import the render-safe composer
+        from render_safe_composer import create_render_safe_short, RenderSafeComposer
+        
+        # Create a test instance
+        composer = RenderSafeComposer()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Render-safe composer is importable and ready',
+            'temp_dir': str(composer.temp_dir)
+        })
+        
+    except ImportError as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Import failed: {str(e)}',
+            'type': 'import_error'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Test failed: {str(e)}',
+            'type': 'general_error'
+        }), 500
+
 @app.route('/api/simple-upload', methods=['POST'])
 def simple_upload():
     """Just upload the file without processing - for testing"""
@@ -491,7 +520,13 @@ def create_split_screen_video():
             
         except Exception as e:
             print(f"❌ Error during split-screen creation: {str(e)}")
-            return jsonify({'success': False, 'error': f'Split-screen creation failed: {str(e)}'}), 500
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'success': False, 
+                'error': f'Split-screen creation failed: {str(e)}',
+                'details': 'Check server logs for full traceback'
+            }), 500
             
         finally:
             # Clean up uploaded file
