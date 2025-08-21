@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import shutil
-from utils.console import print_step, print_substep
+# from utils.console import print_step, print_substep  # Not available in minimal setup
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS to fix blocking issue
