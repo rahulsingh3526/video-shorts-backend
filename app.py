@@ -368,7 +368,7 @@ def download_file(filename):
 
 @app.route('/api/create-split-screen', methods=['POST'])
 def create_split_screen_video():
-    """Create advanced split-screen video with Minecraft background and subtitles"""
+    """Create advanced split-screen video with Minecraft background and subtitles (MEMORY OPTIMIZED)"""
     try:
         # Check if file is in request
         if 'video' not in request.files:
@@ -394,46 +394,48 @@ def create_split_screen_video():
         
         # Get file info for logging
         file_size = os.path.getsize(input_filepath)
-        print(f"Uploaded file: {input_filename}, Size: {file_size} bytes")
+        print(f"🎬 Starting memory-optimized split-screen processing")
+        print(f"📹 Input: {input_filename}, Size: {file_size} bytes")
         
         try:
-            # Create advanced split-screen video using the new composer
-            print_step("Starting advanced split-screen video creation")
-            
-            try:
-                from advanced_video_composer import create_advanced_short
-                # Create the split-screen video
-                output_path = create_advanced_short(input_filepath)
-            except ImportError as e:
-                raise Exception(f"Advanced video composer not available: {e}")
-            except Exception as e:
-                raise Exception(f"Advanced processing failed: {e}")
-            
-            # Move to results folder with unique name
+            # Create output path
             output_filename = f"split_screen_{file_id}.mp4"
             final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
-            shutil.move(output_path, final_output_path)
+            
+            # Use memory-optimized composer
+            from memory_optimized_composer import create_optimized_short
+            
+            print("🚀 Processing with memory-optimized composer...")
+            success = create_optimized_short(input_filepath, final_output_path)
+            
+            if not success:
+                raise Exception("Memory-optimized processing failed")
+            
+            if not os.path.exists(final_output_path):
+                raise Exception("Output file was not created")
             
             # Create download URL
             download_url = f"api/download/{output_filename}"
             
+            print("✅ Split-screen video created successfully!")
+            
             return jsonify({
                 'success': True,
-                'message': 'Split-screen video created successfully!',
+                'message': 'Split-screen video created successfully! (Memory Optimized)',
                 'downloadUrl': download_url,
                 'originalSize': file_size,
                 'processedFile': output_filename,
-                'description': 'Advanced split-screen video with Minecraft gameplay and subtitles'
+                'description': 'Memory-optimized split-screen with Minecraft-style background and subtitles'
             })
             
         except Exception as e:
-            print_step(f"Error during split-screen creation: {str(e)}")
+            print(f"❌ Error during split-screen creation: {str(e)}")
             return jsonify({'success': False, 'error': f'Split-screen creation failed: {str(e)}'}), 500
             
         finally:
             # Clean up uploaded file
             cleanup_file(input_filepath)
-            gc.collect()
+            gc.collect()  # Force garbage collection for memory management
                 
     except Exception as e:
         print(f"Server error: {str(e)}")

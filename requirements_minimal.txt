@@ -1,0 +1,14 @@
+# Minimal requirements for memory-optimized video processing
+# Use this for deployment to reduce memory footprint
+
+# Core Flask dependencies
+Flask==3.1.1
+Flask-CORS==5.0.0
+Werkzeug==3.1.3
+
+# Only essential video processing
+# FFmpeg is handled by system installation
+# openai-whisper==20240930  # Optional - only if needed
+
+# Production server
+gunicorn==23.0.0
