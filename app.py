@@ -67,6 +67,46 @@ def test_ffmpeg():
             'message': f'FFmpeg test failed: {str(e)}'
         }), 500
 
+@app.route('/api/test-minimal', methods=['GET'])
+def test_minimal():
+    """Test ultra-minimal processing without file upload"""
+    try:
+        # Test if we can create a simple video without uploading
+        import tempfile
+        import os
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            test_output = os.path.join(temp_dir, "test.mp4")
+            
+            # Create a simple 2-second test video
+            cmd = [
+                'ffmpeg', '-f', 'lavfi', 
+                '-i', 'color=c=blue:s=320x240:d=2',
+                '-c:v', 'libx264', '-preset', 'ultrafast',
+                '-y', test_output
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0 and os.path.exists(test_output):
+                file_size = os.path.getsize(test_output)
+                return jsonify({
+                    'status': 'success',
+                    'message': 'Ultra-minimal processing works',
+                    'test_file_size': file_size
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Test video creation failed',
+                    'error': result.stderr
+                }), 500
+                
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Minimal test failed: {str(e)}'
+        }), 500
+
 @app.route('/api/simple-upload', methods=['POST'])
 def simple_upload():
     """Just upload the file without processing - for testing"""
@@ -402,11 +442,11 @@ def create_split_screen_video():
             output_filename = f"split_screen_{file_id}.mp4"
             final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
             
-            # Use memory-optimized composer
-            from memory_optimized_composer import create_optimized_short
+            # Use ultra-minimal composer for 512MB limit
+            from ultra_minimal_composer import create_ultra_minimal_short
             
-            print("🚀 Processing with memory-optimized composer...")
-            success = create_optimized_short(input_filepath, final_output_path)
+            print("🚀 Processing with ultra-minimal composer (no Whisper)...")
+            success = create_ultra_minimal_short(input_filepath, final_output_path)
             
             if not success:
                 raise Exception("Memory-optimized processing failed")
