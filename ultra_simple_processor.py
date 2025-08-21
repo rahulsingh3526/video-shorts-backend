@@ -29,13 +29,13 @@ def create_ultra_simple_video(input_path: str, output_path: str) -> bool:
         cmd = [
             'ffmpeg', '-i', input_path,
             '-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2:black',
-            '-c:v', 'libx264', '-preset', 'superfast', '-crf', '30',
-            '-t', '30',  # Max 30 seconds
-            '-an', '-y', output_path
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '32',
+            '-t', '20',  # Max 20 seconds for faster processing
+            '-r', '15', '-an', '-y', output_path
         ]
         
         print(f"Running command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
         
         if result.returncode == 0 and os.path.exists(output_path):
             print(f"✅ Ultra-simple processing successful")

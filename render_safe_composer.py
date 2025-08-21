@@ -79,18 +79,18 @@ class RenderSafeComposer:
     def _create_top_video(self, input_path: str, duration: float) -> str:
         """Create top half video."""
         top_video_path = self.temp_dir / f"top_{uuid.uuid4().hex[:6]}.mp4"
-        duration = min(duration, 60)  # Max 1 minute
+        duration = min(duration, 45)  # Max 45 seconds for faster processing
         
         print(f"Creating top video: {input_path} -> {top_video_path}")
         cmd = [
             'ffmpeg', '-i', input_path, '-t', str(duration),
             '-vf', 'scale=720:640:force_original_aspect_ratio=decrease,pad=720:640:(ow-iw)/2:(oh-ih)/2:black',
-            '-c:v', 'libx264', '-preset', 'superfast', '-crf', '28',
-            '-r', '20', '-an', '-y', str(top_video_path)
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30',
+            '-r', '15', '-an', '-y', str(top_video_path)
         ]
         
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, timeout=60)
+            result = subprocess.run(cmd, check=True, capture_output=True, timeout=180)
             print(f"✅ Top video created: {top_video_path}")
             return str(top_video_path)
         except subprocess.CalledProcessError as e:
@@ -101,16 +101,16 @@ class RenderSafeComposer:
     def _create_bottom_video(self, duration: float) -> str:
         """Create bottom half with simple background."""
         bottom_video_path = self.temp_dir / f"bottom_{uuid.uuid4().hex[:6]}.mp4"
-        duration = min(duration, 60)  # Max 1 minute
+        duration = min(duration, 45)  # Max 45 seconds for faster processing
         
         cmd = [
             'ffmpeg', '-f', 'lavfi', '-i', f'color=c=green:s=720x640:d={duration}',
             '-vf', 'drawtext=text=GAMEPLAY:fontcolor=white:fontsize=36:x=(w-text_w)/2:y=(h-text_h)/2',
-            '-c:v', 'libx264', '-preset', 'superfast', '-crf', '30',
-            '-r', '20', '-an', '-y', str(bottom_video_path)
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '32',
+            '-r', '15', '-an', '-y', str(bottom_video_path)
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+        subprocess.run(cmd, check=True, capture_output=True, timeout=120)
         return str(bottom_video_path)
     
     def _combine_videos(self, top_path: str, bottom_path: str, output_path: str):
@@ -118,11 +118,11 @@ class RenderSafeComposer:
         cmd = [
             'ffmpeg', '-i', top_path, '-i', bottom_path,
             '-filter_complex', '[0:v][1:v]vstack=inputs=2[v]',
-            '-map', '[v]', '-c:v', 'libx264', '-preset', 'superfast',
-            '-crf', '28', '-r', '20', '-an', '-y', output_path
+            '-map', '[v]', '-c:v', 'libx264', '-preset', 'ultrafast',
+            '-crf', '30', '-r', '15', '-an', '-y', output_path
         ]
         
-        subprocess.run(cmd, check=True, capture_output=True, timeout=60)
+        subprocess.run(cmd, check=True, capture_output=True, timeout=180)
     
     def _cleanup_temp_files(self):
         """Clean up temporary files."""
