@@ -146,6 +146,106 @@ def test_render_safe():
             'type': 'general_error'
         }), 500
 
+@app.route('/api/diagnose-system', methods=['GET'])
+def diagnose_system():
+    """Comprehensive system diagnostics to find the root issue"""
+    diagnostics = {}
+    
+    try:
+        # 1. Check basic directories
+        diagnostics['directories'] = {
+            'upload_folder_exists': os.path.exists(UPLOAD_FOLDER),
+            'results_folder_exists': os.path.exists(RESULTS_FOLDER),
+            'upload_folder_writable': os.access(UPLOAD_FOLDER, os.W_OK) if os.path.exists(UPLOAD_FOLDER) else False,
+            'results_folder_writable': os.access(RESULTS_FOLDER, os.W_OK) if os.path.exists(RESULTS_FOLDER) else False,
+        }
+        
+        # 2. Test temp directory creation
+        try:
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                test_file = temp_path / "test.txt"
+                test_file.write_text("test")
+                diagnostics['temp_directory'] = {
+                    'can_create': True,
+                    'can_write': test_file.exists(),
+                    'temp_path': str(temp_path)
+                }
+        except Exception as e:
+            diagnostics['temp_directory'] = {
+                'can_create': False,
+                'error': str(e)
+            }
+        
+        # 3. Test FFmpeg basic operation
+        try:
+            result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True, timeout=5)
+            diagnostics['ffmpeg'] = {
+                'available': result.returncode == 0,
+                'version': result.stdout.split('\n')[0] if result.returncode == 0 else None
+            }
+        except Exception as e:
+            diagnostics['ffmpeg'] = {
+                'available': False,
+                'error': str(e)
+            }
+        
+        # 4. Test file upload simulation
+        try:
+            test_content = b"fake video content for testing"
+            test_filename = f"test_{uuid.uuid4().hex[:8]}.mp4"
+            test_path = os.path.join(UPLOAD_FOLDER, test_filename)
+            
+            with open(test_path, 'wb') as f:
+                f.write(test_content)
+            
+            file_exists = os.path.exists(test_path)
+            file_size = os.path.getsize(test_path) if file_exists else 0
+            
+            # Clean up
+            if file_exists:
+                os.remove(test_path)
+                
+            diagnostics['file_operations'] = {
+                'can_write_upload': True,
+                'file_size': file_size,
+                'can_delete': not os.path.exists(test_path)
+            }
+        except Exception as e:
+            diagnostics['file_operations'] = {
+                'can_write_upload': False,
+                'error': str(e)
+            }
+        
+        # 5. Test memory and disk space
+        try:
+            import psutil
+            diagnostics['system_resources'] = {
+                'memory_available': psutil.virtual_memory().available,
+                'disk_free': psutil.disk_usage('/').free
+            }
+        except ImportError:
+            diagnostics['system_resources'] = {
+                'note': 'psutil not available for detailed system info'
+            }
+        except Exception as e:
+            diagnostics['system_resources'] = {
+                'error': str(e)
+            }
+        
+        return jsonify({
+            'status': 'success',
+            'diagnostics': diagnostics
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Diagnostics failed: {str(e)}',
+            'partial_diagnostics': diagnostics
+        }), 500
+
 @app.route('/api/simple-upload', methods=['POST'])
 def simple_upload():
     """Just upload the file without processing - for testing"""
@@ -176,6 +276,102 @@ def simple_upload():
         
     except Exception as e:
         return jsonify({'success': False, 'error': f'Upload error: {str(e)}'}), 500
+
+@app.route('/api/test-basic-ffmpeg', methods=['POST'])
+def test_basic_ffmpeg():
+    """Test the most basic FFmpeg operation on an uploaded file"""
+    try:
+        if 'video' not in request.files:
+            return jsonify({'success': False, 'error': 'No video file provided'}), 400
+        
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Save uploaded file
+        file_id = str(uuid.uuid4())[:8]
+        filename = secure_filename(file.filename)
+        file_extension = filename.rsplit('.', 1)[1].lower()
+        input_filename = f"test_input_{file_id}.{file_extension}"
+        input_path = os.path.join(UPLOAD_FOLDER, input_filename)
+        
+        file.save(input_path)
+        
+        try:
+            # Test 1: Get video info with ffprobe
+            print(f"Testing ffprobe on: {input_path}")
+            probe_cmd = ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration', '-of', 'csv=p=0', input_path]
+            probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=10)
+            
+            if probe_result.returncode != 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'FFprobe failed',
+                    'details': {
+                        'probe_stderr': probe_result.stderr,
+                        'probe_stdout': probe_result.stdout
+                    }
+                }), 500
+            
+            duration = float(probe_result.stdout.strip()) if probe_result.stdout.strip() else 0
+            
+            # Test 2: Simple FFmpeg operation - just copy first 5 seconds
+            output_filename = f"test_output_{file_id}.mp4"
+            output_path = os.path.join(RESULTS_FOLDER, output_filename)
+            
+            print(f"Testing FFmpeg copy operation: {input_path} -> {output_path}")
+            ffmpeg_cmd = [
+                'ffmpeg', '-i', input_path,
+                '-t', '5',  # Only 5 seconds
+                '-c', 'copy',  # Just copy, no re-encoding
+                '-y', output_path
+            ]
+            
+            ffmpeg_result = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, timeout=30)
+            
+            if ffmpeg_result.returncode != 0:
+                return jsonify({
+                    'success': False,
+                    'error': 'FFmpeg copy failed',
+                    'details': {
+                        'ffmpeg_stderr': ffmpeg_result.stderr,
+                        'ffmpeg_stdout': ffmpeg_result.stdout,
+                        'duration': duration
+                    }
+                }), 500
+            
+            # Check if output exists
+            if not os.path.exists(output_path):
+                return jsonify({
+                    'success': False,
+                    'error': 'Output file not created'
+                }), 500
+            
+            output_size = os.path.getsize(output_path)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Basic FFmpeg test successful',
+                'details': {
+                    'input_size': os.path.getsize(input_path),
+                    'output_size': output_size,
+                    'duration': duration,
+                    'download_url': f'api/download/{output_filename}'
+                }
+            })
+            
+        finally:
+            # Cleanup input file
+            if os.path.exists(input_path):
+                os.remove(input_path)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'error': f'Basic FFmpeg test failed: {str(e)}'
+        }), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
