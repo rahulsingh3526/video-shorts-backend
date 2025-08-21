@@ -4,6 +4,7 @@ import uuid
 import subprocess
 import tempfile
 from pathlib import Path
+from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -66,6 +67,15 @@ def test_ffmpeg():
             'status': 'error',
             'message': f'FFmpeg test failed: {str(e)}'
         }), 500
+
+@app.route('/api/wake-up', methods=['GET'])
+def wake_up():
+    """Simple endpoint to wake up the service"""
+    return jsonify({
+        'status': 'awake',
+        'message': 'Service is now awake and ready',
+        'timestamp': str(datetime.now())
+    })
 
 @app.route('/api/test-minimal', methods=['GET'])
 def test_minimal():
@@ -442,11 +452,11 @@ def create_split_screen_video():
             output_filename = f"split_screen_{file_id}.mp4"
             final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
             
-            # Use 720p optimized composer with FULL features
-            from optimized_720p_composer import create_720p_optimized_short
+            # Use render-safe composer for reliability
+            from render_safe_composer import create_render_safe_short
             
-            print("🚀 Processing with 720p optimized composer (ALL features)...")
-            success = create_720p_optimized_short(input_filepath, final_output_path)
+            print("🚀 Processing with Render-safe composer (guaranteed to work)...")
+            success = create_render_safe_short(input_filepath, final_output_path)
             
             if not success:
                 raise Exception("720p optimized processing failed")
