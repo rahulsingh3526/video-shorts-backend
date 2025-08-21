@@ -442,14 +442,14 @@ def create_split_screen_video():
             output_filename = f"split_screen_{file_id}.mp4"
             final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
             
-            # Use ultra-minimal composer for 512MB limit
-            from ultra_minimal_composer import create_ultra_minimal_short
+            # Use 720p optimized composer with FULL features
+            from optimized_720p_composer import create_720p_optimized_short
             
-            print("🚀 Processing with ultra-minimal composer (no Whisper)...")
-            success = create_ultra_minimal_short(input_filepath, final_output_path)
+            print("🚀 Processing with 720p optimized composer (ALL features)...")
+            success = create_720p_optimized_short(input_filepath, final_output_path)
             
             if not success:
-                raise Exception("Memory-optimized processing failed")
+                raise Exception("720p optimized processing failed")
             
             if not os.path.exists(final_output_path):
                 raise Exception("Output file was not created")
@@ -461,11 +461,11 @@ def create_split_screen_video():
             
             return jsonify({
                 'success': True,
-                'message': 'Split-screen video created successfully! (Memory Optimized)',
+                'message': 'Split-screen video created successfully! (720p Optimized with ALL Features)',
                 'downloadUrl': download_url,
                 'originalSize': file_size,
                 'processedFile': output_filename,
-                'description': 'Memory-optimized split-screen with Minecraft-style background and subtitles'
+                'description': '720p split-screen with voice transcription, Minecraft background, and subtitles'
             })
             
         except Exception as e:
