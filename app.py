@@ -490,16 +490,35 @@ def create_split_screen_video():
             except Exception as e:
                 raise Exception(f"FFmpeg test failed: {e}")
             
-            # Use render-safe composer for reliability
-            from render_safe_composer import create_render_safe_short
-            
-            print("🚀 Processing with Render-safe composer (guaranteed to work)...")
-            print(f"Input file: {input_filepath}")
-            print(f"Output file: {final_output_path}")
-            success = create_render_safe_short(input_filepath, final_output_path)
+            # Try render-safe composer first, fallback to ultra-simple
+            try:
+                from render_safe_composer import create_render_safe_short
+                
+                print("🚀 Processing with Render-safe composer...")
+                print(f"Input file: {input_filepath}")
+                print(f"Output file: {final_output_path}")
+                success = create_render_safe_short(input_filepath, final_output_path)
+                
+                if success:
+                    print("✅ Render-safe processing successful")
+                else:
+                    print("⚠️ Render-safe processing failed, trying ultra-simple fallback...")
+                    raise Exception("Render-safe failed, trying fallback")
+                    
+            except Exception as e:
+                print(f"⚠️ Render-safe failed: {e}")
+                print("🔄 Falling back to ultra-simple processing...")
+                
+                from ultra_simple_processor import create_ultra_simple_video
+                success = create_ultra_simple_video(input_filepath, final_output_path)
+                
+                if success:
+                    print("✅ Ultra-simple fallback successful")
+                else:
+                    print("❌ Both render-safe and ultra-simple failed")
             
             if not success:
-                raise Exception("Render-safe processing failed")
+                raise Exception("All processing methods failed (render-safe + ultra-simple)")
             
             if not os.path.exists(final_output_path):
                 raise Exception("Output file was not created")
