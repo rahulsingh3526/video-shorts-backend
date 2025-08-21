@@ -452,14 +452,25 @@ def create_split_screen_video():
             output_filename = f"split_screen_{file_id}.mp4"
             final_output_path = os.path.join(RESULTS_FOLDER, output_filename)
             
+            # Test FFmpeg first
+            try:
+                result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True, timeout=5)
+                if result.returncode != 0:
+                    raise Exception("FFmpeg not available")
+                print("✅ FFmpeg is available")
+            except Exception as e:
+                raise Exception(f"FFmpeg test failed: {e}")
+            
             # Use render-safe composer for reliability
             from render_safe_composer import create_render_safe_short
             
             print("🚀 Processing with Render-safe composer (guaranteed to work)...")
+            print(f"Input file: {input_filepath}")
+            print(f"Output file: {final_output_path}")
             success = create_render_safe_short(input_filepath, final_output_path)
             
             if not success:
-                raise Exception("720p optimized processing failed")
+                raise Exception("Render-safe processing failed")
             
             if not os.path.exists(final_output_path):
                 raise Exception("Output file was not created")

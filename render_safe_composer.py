@@ -57,7 +57,9 @@ class RenderSafeComposer:
             return True
             
         except Exception as e:
-            print(f"❌ Error: {str(e)}")
+            print(f"❌ Error in render-safe processing: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self._cleanup_temp_files()
             return False
     
