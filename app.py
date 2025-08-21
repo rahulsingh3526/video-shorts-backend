@@ -34,6 +34,15 @@ def cleanup_file(filepath):
     except Exception as e:
         print(f"Error cleaning up {filepath}: {e}")
 
+@app.route('/')
+def index():
+    """Simple root endpoint"""
+    return jsonify({
+        'status': 'Backend is running',
+        'service': 'Video Shorts Converter',
+        'version': '2.0'
+    })
+
 @app.route('/api/test-ffmpeg', methods=['GET'])
 def test_ffmpeg():
     """Test if FFmpeg is available and working"""
@@ -391,10 +400,14 @@ def create_split_screen_video():
             # Create advanced split-screen video using the new composer
             print_step("Starting advanced split-screen video creation")
             
-            from advanced_video_composer import create_advanced_short
-            
-            # Create the split-screen video
-            output_path = create_advanced_short(input_filepath)
+            try:
+                from advanced_video_composer import create_advanced_short
+                # Create the split-screen video
+                output_path = create_advanced_short(input_filepath)
+            except ImportError as e:
+                raise Exception(f"Advanced video composer not available: {e}")
+            except Exception as e:
+                raise Exception(f"Advanced processing failed: {e}")
             
             # Move to results folder with unique name
             output_filename = f"split_screen_{file_id}.mp4"

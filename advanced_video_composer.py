@@ -20,6 +20,7 @@ import ffmpeg
 try:
     from moviepy.editor import VideoFileClip
 except ImportError:
+    print("Warning: MoviePy not available for advanced video processing")
     VideoFileClip = None
 
 from utils.console import print_step, print_substep
